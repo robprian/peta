@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contoh Embed — Peta Location Picker</title>
+<style>
+  :root { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #10212b; background: #eef2f3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; }
+  .shell { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100vh; }
+  .stage { display: flex; flex-direction: column; min-width: 0; padding: 14px; gap: 10px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px; }
+  .toolbar input, .toolbar select, .toolbar button { border: 1px solid #dbe3ea; border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 12px; background: #fff; }
+  .toolbar button { background: #0f766e; color: #fff; border-color: #0f766e; cursor: pointer; font-weight: 650; }
+  .toolbar button.secondary { background: #fff; color: #0f766e; }
+  .toolbar label { font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 5px; }
+  .grow { flex: 1; min-width: 120px; }
+  iframe { flex: 1; width: 100%; min-height: 320px; border: 1px solid #dbe3ea; border-radius: 18px; background: #fff; }
+  .side { background: #fff; border-left: 1px solid #e2e8f0; padding: 18px; overflow: auto; }
+  .side h1 { font-size: 16px; margin: 0 0 4px; }
+  .side p { font-size: 12px; color: #64748b; line-height: 1.5; margin: 0 0 14px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #64748b; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+  .dot.on { background: #10b981; }
+  .result { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin: 10px 0; }
+  .result h2 { font-size: 13px; margin: 0 0 8px; }
+  .kv { display: grid; grid-template-columns: 82px 1fr; gap: 5px 8px; font-size: 11px; }
+  .kv span { color: #64748b; }
+  .kv strong { font-weight: 600; overflow-wrap: anywhere; }
+  pre { background: #0f172a; color: #d1fae5; border-radius: 12px; padding: 12px; font-size: 10.5px; line-height: 1.5; overflow: auto; max-height: 44vh; }
+  .hint { font-size: 11px; color: #64748b; margin-top: 10px; line-height: 1.55; }
+  code { background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
+  @media (max-width: 960px) {
+    .shell { grid-template-columns: 1fr; height: auto; }
+    .side { border-left: 0; border-top: 1px solid #e2e8f0; }
+    iframe { height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <main class="stage">
+    <div class="toolbar">
+      <label>API <input id="apiBase" class="grow" value="" placeholder="https://api.example.id (kosong = demo statis)"></label>
+      <label>Tema
+        <select id="theme"><option value="light">Terang</option><option value="dark">Gelap</option></select>
+      </label>
+      <button id="reload" class="secondary" type="button">Muat ulang</button>
+      <button id="sendLocation" type="button">Set lokasi</button>
+      <button id="sendSearch" class="secondary" type="button">Cari</button>
+    </div>
+    <iframe id="picker" title="Pemilih lokasi" src="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=15&autoSelect=1"></iframe>
+  </main>
+
+  <aside class="side">
+    <span class="badge"><span class="dot" id="dot"></span><span id="status">Menunggu widget…</span></span>
+    <h1 style="margin-top:10px">Payload lokasi</h1>
+    <p>Klik “Gunakan Lokasi Ini” di dalam widget. Parent menerima pesan dan menampilkan datanya di sini.</p>
+    <div id="summary" class="result" hidden>
+      <h2 id="summaryTitle">—</h2>
+      <div class="kv">
+        <span>Alamat</span><strong id="sAddress">—</strong>
+        <span>Provinsi</span><strong id="sProvince">—</strong>
+        <span>Kab/Kota</span><strong id="sRegency">—</strong>
+        <span>Kecamatan</span><strong id="sDistrict">—</strong>
+        <span>Desa/Kel</span><strong id="sVillage">—</strong>
+        <span>Kode pos</span><strong id="sPostal">—</strong>
+        <span>Koordinat</span><strong id="sCoords">—</strong>
+      </div>
+    </div>
+    <pre id="payload">{ menunggu event LOCATION_SELECTED ... }</pre>
+    <div class="hint">
+      Kontrak pesan: <code>{ type, data }</code>. Widget mengirim
+      <code>PETA_READY</code>, <code>PETA_CLOSE_REQUEST</code>, dan
+      <code>LOCATION_SELECTED</code>. Parent dapat mengirim
+      <code>PETA_CONFIGURE</code>, <code>PETA_SET_LOCATION</code>,
+      <code>PETA_SEARCH</code>, <code>PETA_CLEAR</code>, <code>PETA_GET_STATE</code>.
+    </div>
+  </aside>
+</div>
+
+<script>
+const iframe = document.getElementById('picker');
+const dot = document.getElementById('dot');
+const status = document.getElementById('status');
+const payloadEl = document.getElementById('payload');
+let ready = false;
+
+function apiBase() { return document.getElementById('apiBase').value.trim().replace(/\/+$/, ''); }
+function theme() { return document.getElementById('theme').value; }
+
+function src() {
+  const base = apiBase();
+  const p = new URLSearchParams({ theme: theme(), targetOrigin: '*', demo: base ? '0' : '1' });
+  if (base) p.set('apiBase', base);
+  else {
+    p.set('lat', '-6.946966'); p.set('lng', '107.598788');
+    p.set('zoom', '15'); p.set('autoSelect', '1');
+  }
+  return `widget/location-picker.html?${p}`;
+}
+function reload() {
+  ready = false;
+  dot.classList.remove('on');
+  status.textContent = 'Memuat widget…';
+  iframe.src = src();
+}
+function send(type, data) {
+  if (!ready) { status.textContent = 'Widget belum siap'; return; }
+  iframe.contentWindow.postMessage({ type, data }, '*');
+}
+
+document.getElementById('reload').addEventListener('click', reload);
+document.getElementById('theme').addEventListener('change', () => {
+  send('PETA_SET_THEME', { theme: theme() });
+});
+document.getElementById('sendLocation').addEventListener('click', () => {
+  send('PETA_SET_LOCATION', { lat: -6.9175, lng: 107.6191, zoom: 15, flyTo: true });
+});
+document.getElementById('sendSearch').addEventListener('click', () => {
+  const q = prompt('Cari alamat/daerah:', 'Cibaduyut Bandung');
+  if (q) send('PETA_SEARCH', { q, selectFirst: true });
+});
+
+window.addEventListener('message', (event) => {
+  if (event.source !== iframe.contentWindow) return;
+  const message = event.data;
+  if (!message || message.source !== 'peta-location-picker') return;
+
+  if (message.type === 'PETA_READY') {
+    ready = true;
+    dot.classList.add('on');
+    status.textContent = `Siap — v${message.data.version || '?'}`;
+    return;
+  }
+  if (message.type === 'LOCATION_SELECTED') {
+    const data = message.data;
+    payloadEl.textContent = JSON.stringify(data, null, 2);
+    renderSummary(data);
+    status.textContent = 'Lokasi dipilih — payload diterima';
+    return;
+  }
+  if (message.type === 'PETA_CLOSE_REQUEST') {
+    status.textContent = 'Widget meminta ditutup (parent yang memutuskan)';
+  }
+  if (message.type === 'PETA_STATE') {
+    payloadEl.textContent = JSON.stringify(message.data, null, 2);
+  }
+});
+
+function renderSummary(data) {
+  const address = data.address || {};
+  const region = data.region || {};
+  document.getElementById('summary').hidden = false;
+  document.getElementById('summaryTitle').textContent = address.label || address.formatted || 'Lokasi terpilih';
+  document.getElementById('sAddress').textContent = address.line1 || address.formatted || '—';
+  document.getElementById('sProvince').textContent = region.province?.name || '—';
+  document.getElementById('sRegency').textContent = region.regency?.name || '—';
+  document.getElementById('sDistrict').textContent = region.district?.name || '—';
+  document.getElementById('sVillage').textContent = region.village?.name || '—';
+  document.getElementById('sPostal').textContent = data.postal_code || '—';
+  document.getElementById('sCoords').textContent = `${Number(data.lat).toFixed(6)}, ${Number(data.lng).toFixed(6)}`;
+}
+
+iframe.addEventListener('load', () => {
+  // Handshake cadangan bila PETA_READY terlewat.
+  setTimeout(() => {
+    if (!ready) {
+      status.textContent = 'Widget termuat, menunggu handshake…';
+      send('PETA_GET_STATE', null);
+    }
+  }, 1200);
+});
+reload();
+</script>
+</body>
+</html>
