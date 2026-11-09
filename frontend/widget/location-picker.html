@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<meta name="color-scheme" content="light dark">
+<title>Peta Indonesia — Pilih Lokasi</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root {
+    --bg: #eef2f3; --panel: rgba(255,255,255,.96); --solid: #fff;
+    --text: #10212b; --muted: #64748b; --line: #e2e8f0;
+    --brand: #0f766e; --brand-dark: #115e59; --brand-soft: #ccfbf1;
+    --danger: #b91c1c; --warn: #92400e;
+    --shadow: 0 18px 50px rgba(15,23,42,.18), 0 2px 8px rgba(15,23,42,.06);
+    --radius: 16px; --panel-w: 384px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    --bg: #0b1220; --panel: rgba(15,23,42,.96); --solid: #0f172a;
+    --text: #e6edf5; --muted: #94a3b8; --line: #263247;
+    --brand: #2dd4bf; --brand-dark: #5eead4; --brand-soft: #134e4a;
+    --danger: #f87171; --warn: #fbbf24;
+    --shadow: 0 18px 50px rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+  body { overflow: hidden; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  #map { position: absolute; inset: 0; z-index: 0; background: var(--bg); }
+  .leaflet-container { font-family: inherit; }
+  .leaflet-control-attribution { font-size: 10px; }
+  [data-theme="dark"] .leaflet-tile { filter: brightness(.72) contrast(1.08) saturate(.9); }
+
+  .search-shell { position: absolute; z-index: 1000; top: 16px; left: 16px; width: min(440px, calc(100vw - 32px)); }
+  .search-card {
+    display: flex; align-items: center; gap: 10px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 6px 8px 6px 14px; backdrop-filter: blur(12px);
+  }
+  .search-card:focus-within { border-color: var(--brand); }
+  .search-icon { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; flex: 0 0 auto; }
+  #searchInput { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 10px 0; font-size: 15px; }
+  #searchInput::placeholder { color: var(--muted); }
+  #searchInput::-webkit-search-cancel-button { display: none; }
+
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 36px; height: 36px; flex: 0 0 auto;
+    border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--muted);
+  }
+  .icon-btn:hover { background: var(--brand-soft); color: var(--brand-dark); }
+  .icon-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .suggestions {
+    margin-top: 8px; background: var(--solid); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; max-height: min(420px, 60vh); overflow-y: auto;
+  }
+  .suggestion {
+    display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    padding: 11px 14px; border-bottom: 1px solid var(--line);
+  }
+  .suggestion:last-child { border-bottom: 0; }
+  .suggestion:hover, .suggestion.is-active { background: var(--brand-soft); }
+  .suggestion .s-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 650; }
+  .suggestion .s-detail { margin-top: 2px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .s-badge { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-dark); font-weight: 700; }
+  .s-empty { padding: 14px; font-size: 13px; color: var(--muted); }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .panel {
+    position: absolute; z-index: 1000; top: 16px; right: 16px; bottom: 16px; width: var(--panel-w);
+    display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 20px; box-shadow: var(--shadow); backdrop-filter: blur(14px); overflow: hidden;
+  }
+  .panel-handle { display: none; }
+  .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 18px 18px 10px; }
+  .eyebrow { font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; color: var(--brand); }
+  .panel-head h1 { margin: 4px 0 0; font-size: 16px; line-height: 1.3; font-weight: 700; }
+  .empty-state { margin: auto 18px; padding: 10px 0 20px; text-align: center; color: var(--muted); }
+  .empty-art svg { width: 64px; height: 64px; fill: none; stroke: var(--brand); stroke-width: 2; opacity: .8; }
+  .empty-state p { font-size: 13px; line-height: 1.5; margin: 8px 0 0; }
+
+  #details { padding: 0 18px; overflow-y: auto; }
+  .coords-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin: 6px 0 14px; }
+  .coords-row div { background: color-mix(in srgb, var(--brand-soft) 55%, transparent); border-radius: 10px; padding: 8px 10px; }
+  .coords-row span { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .coords-row strong { display: block; font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  .field { display: block; margin: 0 0 12px; }
+  .field > span { display: block; font-size: 11px; font-weight: 650; color: var(--muted); margin-bottom: 5px; }
+  .field input {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--solid);
+    padding: 10px 11px; font-size: 13px; outline: 0;
+  }
+  .field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
+  .field.compact { max-width: 140px; }
+
+  .region-grid { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .region-row { display: grid; grid-template-columns: 78px 1fr; gap: 8px; background: var(--solid); padding: 8px 10px; font-size: 12px; }
+  .region-row span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding-top: 1px; }
+  .region-row strong { font-weight: 600; line-height: 1.35; }
+  .region-row em { color: var(--muted); font-style: normal; font-size: 10px; display: block; }
+
+  .nearest { border: 1px dashed var(--line); border-radius: 10px; padding: 9px 11px; font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.45; }
+  .nearest strong { color: var(--text); }
+  .match-note { font-size: 11px; color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; line-height: 1.4; }
+
+  .panel-actions { margin-top: auto; padding: 12px 18px 18px; border-top: 1px solid var(--line); background: linear-gradient(to top, var(--solid), transparent); }
+  .primary {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    border: 0; border-radius: 12px; padding: 12px 14px; background: var(--brand);
+    color: #fff; font-weight: 700; font-size: 14px; transition: transform .08s ease, background .15s;
+  }
+  [data-theme="dark"] .primary { color: #042f2e; }
+  .primary:hover:not(:disabled) { background: var(--brand-dark); }
+  .primary:active:not(:disabled) { transform: translateY(1px); }
+  .primary:disabled { opacity: .45; cursor: not-allowed; }
+  .primary svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .actions-row { display: flex; gap: 8px; margin-top: 8px; }
+  .ghost { flex: 1; border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 8px; font-size: 12px; color: var(--muted); }
+  .ghost:hover { border-color: var(--brand); color: var(--brand-dark); }
+
+  .toast {
+    position: absolute; z-index: 2000; left: 50%; bottom: 22px; transform: translate(-50%, 20px);
+    background: #0f172a; color: #f8fafc; border-radius: 999px; padding: 9px 16px; font-size: 12px;
+    opacity: 0; pointer-events: none; transition: .2s ease; max-width: calc(100vw - 40px);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .pin { width: 34px; height: 44px; position: relative; filter: drop-shadow(0 6px 6px rgba(0,0,0,.3)); }
+  .pin svg { width: 100%; height: 100%; }
+  .pin::after { content: ""; position: absolute; left: 50%; bottom: -2px; width: 10px; height: 4px; border-radius: 50%; background: rgba(0,0,0,.25); transform: translateX(-50%); }
+  .pulse { animation: pulse 1.2s ease-out infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(15,118,110,.35); } 100% { box-shadow: 0 0 0 18px rgba(15,118,110,0); } }
+
+  @media (max-width: 860px) {
+    .panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 52vh; border-radius: 20px 20px 0 0; }
+    .panel-handle { display: block; width: 42px; height: 4px; border-radius: 999px; background: var(--line); margin: 8px auto 0; }
+    .panel-head { padding-top: 12px; }
+    .empty-state { padding: 4px 0 14px; }
+    .empty-art { display: none; }
+    .coords-row { margin-bottom: 10px; }
+    #details { padding-bottom: 4px; }
+    .panel-actions { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+    .search-shell { top: 12px; left: 12px; width: calc(100vw - 24px); }
+    #searchInput { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map" role="application" aria-label="Peta pemilih lokasi"></div>
+
+  <div class="search-shell">
+    <div class="search-card">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>
+      </svg>
+      <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Cari alamat, jalan, kecamatan…" aria-label="Cari alamat"
+             aria-autocomplete="list" aria-controls="suggestions">
+      <button id="clearSearch" class="icon-btn" type="button" aria-label="Hapus pencarian" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+    <div id="suggestions" class="suggestions" role="listbox" hidden></div>
+  </div>
+
+  <aside id="panel" class="panel" aria-label="Detail lokasi">
+    <div class="panel-handle" aria-hidden="true"></div>
+    <div class="panel-head">
+      <div>
+        <span class="eyebrow">Lokasi terpilih</span>
+        <h1 id="panelTitle">Klik peta atau cari alamat</h1>
+      </div>
+      <button id="locateBtn" class="icon-btn" type="button" title="Gunakan lokasi perangkat" aria-label="Gunakan lokasi perangkat">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+      </button>
+    </div>
+
+    <div id="emptyState" class="empty-state">
+      <div class="empty-art" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M32 58s20-16.5 20-31a20 20 0 1 0-40 0c0 14.5 20 31 20 31Z"></path><circle cx="32" cy="27" r="7"></circle></svg>
+      </div>
+      <p>Klik peta, geser pin, atau cari nama daerah untuk mengisi alamat otomatis.</p>
+    </div>
+
+    <div id="details" hidden>
+      <div class="coords-row">
+        <div><span>Latitude</span><strong id="latValue">—</strong></div>
+        <div><span>Longitude</span><strong id="lngValue">—</strong></div>
+        <div><span>Akurasi</span><strong id="matchValue">—</strong></div>
+      </div>
+
+      <label class="field">
+        <span>Alamat lengkap</span>
+        <input id="addressLine" type="text" placeholder="Alamat akan terisi otomatis">
+      </label>
+
+      <div class="region-grid" id="regionGrid"></div>
+
+      <label class="field compact">
+        <span>Kode pos</span>
+        <input id="postalInput" type="text" inputmode="numeric" maxlength="5" placeholder="—">
+      </label>
+
+      <div id="nearestBox" class="nearest" hidden></div>
+      <div id="matchNote" class="match-note" hidden></div>
+    </div>
+
+    <div class="panel-actions">
+      <button id="useBtn" class="primary" type="button" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+        Gunakan Lokasi Ini
+      </button>
+      <div class="actions-row">
+        <button id="resetBtn" class="ghost" type="button">Reset</button>
+        <button id="closeBtn" class="ghost" type="button" hidden>Tutup</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+'use strict';
+
+/* =========================================================================
+   Konfigurasi — dapat dioverride lewat query string atau postMessage.
+   Contoh iframe:
+   location-picker.html?apiBase=https://api.example.id&lat=-6.9&lng=107.6&theme=light
+   ========================================================================= */
+const params = new URLSearchParams(location.search);
+const isHttp = /^https?:$/.test(location.protocol);
+const num = (value, fallback = null) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const CONFIG = {
+  apiBase: (params.get('apiBase') || (isHttp ? '' : 'http://localhost:8000')).replace(/\/+$/, ''),
+  tileUrl: params.get('tileUrl') || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  tileAttribution: params.get('tileAttribution') || '&copy; OpenStreetMap contributors',
+  theme: params.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  targetOrigin: params.get('targetOrigin') || '*',
+  allowedOrigin: params.get('allowedOrigin') || '',
+  autoSelect: params.get('autoSelect') === '1',
+  readOnly: params.get('readOnly') === '1',
+  closeButton: params.get('closeButton') === '1' || params.get('mode') === 'modal',
+  emitOnMove: params.get('emitOnMove') === '1',
+  initial: {
+    lat: num(params.get('lat')),
+    lng: num(params.get('lng')),
+    zoom: Math.round(num(params.get('zoom'), 5)),
+  },
+};
+
+const VERSION = '1.0.0';
+const $ = (id) => document.getElementById(id);
+const els = {
+  map: $('map'), search: $('searchInput'), clearSearch: $('clearSearch'),
+  suggestions: $('suggestions'), panel: $('panel'), title: $('panelTitle'),
+  empty: $('emptyState'), details: $('details'), lat: $('latValue'), lng: $('lngValue'),
+  match: $('matchValue'), address: $('addressLine'), postal: $('postalInput'),
+  regionGrid: $('regionGrid'), nearest: $('nearestBox'), matchNote: $('matchNote'),
+  use: $('useBtn'), reset: $('resetBtn'), close: $('closeBtn'), locate: $('locateBtn'),
+  toast: $('toast'),
+};
+
+const state = {
+  lat: null, lng: null, result: null, marker: null, boundaryLayer: null,
+  searchAbort: null, reverseAbort: null, suggestions: [], activeIndex: -1,
+  reverseSeq: 0, boundarySeq: 0, lastSelectedKey: '',
+};
+
+document.documentElement.dataset.theme = CONFIG.theme;
+if (CONFIG.closeButton) els.close.hidden = false;
+
+/* ------------------------------- utilitas ------------------------------- */
+let toastTimer;
+function toast(message, ms = 2200) {
+  els.toast.textContent = message;
+  els.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms);
+}
+
+function post(type, data) {
+  if (window.parent === window) return;
+  try {
+    window.parent.postMessage(
+      { source: 'peta-location-picker', version: VERSION, type, data, timestamp: Date.now() },
+      CONFIG.targetOrigin
+    );
+  } catch (error) {
+    console.warn('[peta] postMessage gagal', error);
+  }
+  document.dispatchEvent(new CustomEvent(`peta:${type.toLowerCase()}`, { detail: data }));
+}
+
+async function api(path, query = {}, signal) {
+  const url = new URL(CONFIG.apiBase + path, CONFIG.apiBase || location.href);
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
+  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true });
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      let detail = `HTTP ${response.status}`;
+      try { detail = (await response.json()).detail || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const titleCase = (value) => String(value || '').toLowerCase()
+  .replace(/(^|[\s/(.-])([a-z])/g, (_, prefix, char) => prefix + char.toUpperCase())
+  .replace(/\b(Dki|Di|Diy|Kab|Kota|Kec|Kel|Desa|Kp|Jl)\b/g, (m) => m.toUpperCase());
+
+/* --------------------------------- peta --------------------------------- */
+let map;
+let tileLayer;
+let marker;
+
+function initMap() {
+  if (!window.L) {
+    toast('Leaflet gagal dimuat. Periksa koneksi/CDN.', 6000);
+    return;
+  }
+  map = L.map('map', {
+    zoomControl: false,
+    attributionControl: true,
+    worldCopyJump: true,
+    minZoom: 3,
+    maxZoom: 19,
+  }).setView([-2.5, 118], 5);
+
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  tileLayer = L.tileLayer(CONFIG.tileUrl, {
+    attribution: CONFIG.tileAttribution,
+    maxZoom: 19,
+    crossOrigin: true,
+  }).addTo(map);
+
+  map.createPane('boundaryPane');
+  map.getPane('boundaryPane').style.zIndex = 420;
+  map.getPane('boundaryPane').style.pointerEvents = 'none';
+
+  map.on('click', (event) => {
+    if (CONFIG.readOnly) return;
+    setLocation(event.latlng.lat, event.latlng.lng, { fromUser: true });
+  });
+
+  window.addEventListener('resize', () => map.invalidateSize({ debounceMoveend: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) map.invalidateSize();
+  });
+}
+
+const pinIcon = () => L.divIcon({
+  className: '',
+  iconSize: [34, 44],
+  iconAnchor: [17, 42],
+  popupAnchor: [0, -38],
+  html: `<div class="pin"><svg viewBox="0 0 34 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 2C9.3 2 3 8.2 3 15.9 3 26 17 42 17 42s14-16 14-26.1C31 8.2 24.7 2 17 2Z"
+      fill="#0f766e" stroke="#ffffff" stroke-width="2.5"/>
+    <circle cx="17" cy="16" r="5.2" fill="#ffffff"/></svg></div>`,
+});
+
+function setMarker(lat, lng) {
+  if (!map) return;
+  if (!marker) {
+    marker = L.marker([lat, lng], {
+      icon: pinIcon(),
+      draggable: !CONFIG.readOnly,
+      keyboard: true,
+      title: 'Geser pin untuk memilih lokasi',
+      riseOnHover: true,
+    }).addTo(map);
+    marker.on('dragend', () => {
+      const point = marker.getLatLng();
+      setLocation(point.lat, point.lng, { fromUser: true });
+    });
+  } else {
+    marker.setLatLng([lat, lng]);
+  }
+  state.marker = marker;
+}
+
+function updateCoords(lat, lng) {
+  els.lat.textContent = Number(lat).toFixed(6);
+  els.lng.textContent = Number(lng).toFixed(6);
+}
+
+function showEmpty(message) {
+  els.empty.hidden = false;
+  els.details.hidden = true;
+  els.use.disabled = true;
+  els.title.textContent = message || 'Klik peta atau cari alamat';
+}
+
+function setLoading(lat, lng) {
+  els.empty.hidden = true;
+  els.details.hidden = false;
+  els.use.disabled = true;
+  els.title.textContent = 'Mencari alamat…';
+  els.match.textContent = '…';
+  els.regionGrid.replaceChildren();
+  els.nearest.hidden = true;
+  els.matchNote.hidden = true;
+  updateCoords(lat, lng);
+}
+
+/* ------------------------------- boundary ------------------------------- */
+async function showBoundary(code, { fit = false } = {}) {
+  if (!map || !code || !/^\d{2,13}$/.test(code)) return;
+  const seq = ++state.boundarySeq;
+  try {
+    const feature = await api(`/api/v1/geo/regions/${code}/boundary`, { simplify: 0.001 });
+    if (seq !== state.boundarySeq) return;
+    if (state.boundaryLayer) map.removeLayer(state.boundaryLayer);
+    state.boundaryLayer = L.geoJSON(feature, {
+      pane: 'boundaryPane',
+      style: {
+        color: '#0f766e', weight: 2, opacity: 0.9,
+        fillColor: '#14b8a6', fillOpacity: 0.09,
+        dashArray: '5 4', lineJoin: 'round',
+      },
+    }).addTo(map);
+    if (fit) {
+      const paddingTopLeft = [24, 80];
+      const paddingBottomRight = window.innerWidth > 860 ? [410, 40] : [24, 300];
+      map.fitBounds(state.boundaryLayer.getBounds(), {
+        paddingTopLeft, paddingBottomRight, maxZoom: 15, animate: true,
+      });
+    }
+  } catch (error) {
+    if (seq === state.boundarySeq) console.warn('[peta] boundary gagal', error);
+  }
+}
+
+/* ----------------------------- reverse geocode -------------------------- */
+async function reverseAt(lat, lng, options = {}) {
+  state.lat = Number(lat);
+  state.lng = Number(lng);
+  setMarker(state.lat, state.lng);
+  updateCoords(state.lat, state.lng);
+  setLoading(state.lat, state.lng);
+
+  const seq = ++state.reverseSeq;
+  if (state.reverseAbort) state.reverseAbort.abort();
+  state.reverseAbort = new AbortController();
+
+  try {
+    const result = await api('/api/v1/geo/reverse', { lat: state.lat, lng: state.lng }, state.reverseAbort.signal);
+    if (seq !== state.reverseSeq) return;
+    state.result = result;
+
+    if (!result.found) {
+      showEmpty('Lokasi tidak dikenali. Coba geser pin.');
+      updateCoords(state.lat, state.lng);
+      toast('Alamat tidak ditemukan untuk titik ini');
+      return;
+    }
+    renderResult(result);
+
+    const region = result.region || {};
+    const deepest = region.village?.code || region.district?.code || region.regency?.code || region.province?.code;
+    if (!options.skipBoundary) showBoundary(deepest, { fit: Boolean(options.fit) });
+
+    if (CONFIG.emitOnMove) post('PETA_LOCATION_CHANGED', buildPayload());
+    if (CONFIG.autoSelect) {
+      const key = `${state.lat.toFixed(5)},${state.lng.toFixed(5)}`;
+      if (key !== state.lastSelectedKey) {
+        state.lastSelectedKey = key;
+        emitSelected({ auto: true });
+      }
+    }
+  } catch (error) {
+    if (seq !== state.reverseSeq) return;
+    if (error.name === 'AbortError') return;
+    console.error('[peta] reverse gagal', error);
+    showEmpty('Gagal memuat alamat');
+    toast(`Reverse geocode gagal: ${error.message}`, 3500);
+  }
+}
+
+function renderResult(result) {
+  const address = result.address || {};
+  const region = result.region || {};
+  const match = result.match || {};
+
+  els.empty.hidden = true;
+  els.details.hidden = false;
+  els.use.disabled = false;
+  els.title.textContent = titleCase(
+    address.label || address.village || address.district || address.regency || 'Lokasi terpilih'
+  );
+  els.address.value = address.line1 || address.street || '';
+  els.postal.value = address.postcode || '';
+  updateCoords(state.lat, state.lng);
+
+  els.match.textContent = match.method === 'polygon'
+    ? `${Math.round((match.confidence || 0) * 100)}%`
+    : match.method === 'nearest' ? '±' : '—';
+
+  const rows = [
+    ['Provinsi', region.province],
+    ['Kab/Kota', region.regency],
+    ['Kecamatan', region.district],
+    ['Desa/Kel', region.village],
+  ];
+  els.regionGrid.replaceChildren();
+  rows.forEach(([label, item]) => {
+    const row = document.createElement('div');
+    row.className = 'region-row';
+    const key = document.createElement('span');
+    key.textContent = label;
+    const value = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = item?.name ? titleCase(item.name) : '—';
+    value.appendChild(name);
+    if (item?.code) {
+      const code = document.createElement('em');
+      code.textContent = `Kode ${item.code}`;
+      value.appendChild(code);
+    }
+    row.append(key, value);
+    els.regionGrid.appendChild(row);
+  });
+
+  const nearest = [];
+  if (result.nearest?.road?.name) {
+    const distance = result.nearest.road.distance_m;
+    nearest.push(`Jalan: <strong>${escapeHtml(result.nearest.road.name)}</strong>${
+      distance != null ? ` (${Math.round(distance)} m)` : ''}`);
+  }
+  if (result.nearest?.place?.name) {
+    const distance = result.nearest.place.distance_m;
+    nearest.push(`POI: <strong>${escapeHtml(result.nearest.place.name)}</strong>${
+      distance != null ? ` (${Math.round(distance)} m)` : ''}`);
+  }
+  els.nearest.innerHTML = nearest.join('<br>');
+  els.nearest.hidden = nearest.length === 0;
+
+  if (match.approximate) {
+    const distance = match.distance_m != null ? ` ±${Math.round(match.distance_m)} m` : '';
+    els.matchNote.textContent =
+      `Batas desa/kelurahan tidak tersedia di area ini; wilayah diperkirakan dari titik terdekat${distance}.`;
+    els.matchNote.hidden = false;
+  } else {
+    els.matchNote.hidden = true;
+  }
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = String(value ?? '');
+  return div.innerHTML;
+}
+/* ----------------------------- aksi & payload --------------------------- */
+function setLocation(lat, lng, options = {}) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return;
+  if (options.flyTo && map) {
+    map.flyTo([latitude, longitude], options.zoom || Math.max(map.getZoom(), 13), { duration: 0.75 });
+  }
+  if (options.fitBounds && state.boundaryLayer) {
+    map.fitBounds(state.boundaryLayer.getBounds(), { padding: [30, 30], maxZoom: 15 });
+  }
+  reverseAt(latitude, longitude, { skipBoundary: options.skipBoundary });
+}
+
+function buildPayload(extra = {}) {
+  const result = state.result || {};
+  const address = result.address || {};
+  const line1 = els.address.value.trim() || address.line1 || '';
+  const postcode = els.postal.value.trim() || address.postcode || null;
+  const payload = {
+    lat: state.lat,
+    lng: state.lng,
+    location: { lat: state.lat, lng: state.lng },
+    address: {
+      ...address,
+      line1,
+      postcode,
+      formatted: address.formatted || line1,
+    },
+    region: result.region || null,
+    postal_code: postcode,
+    formatted_address: address.formatted || line1,
+    nearest: result.nearest || null,
+    match: result.match || null,
+    source: 'peta-location-picker',
+    selected_at: new Date().toISOString(),
+  };
+  return { ...payload, ...extra };
+}
+
+function emitSelected(extra = {}) {
+  if (!state.result || !state.result.found) {
+    toast('Pilih lokasi terlebih dahulu');
+    return;
+  }
+  const payload = buildPayload(extra);
+  post('LOCATION_SELECTED', payload);
+  toast('Lokasi berhasil dipilih');
+  if (CONFIG.closeButton) {
+    setTimeout(() => post('PETA_CLOSE_REQUEST', payload), 150);
+  }
+}
+
+function reset({ silent = false } = {}) {
+  if (state.reverseAbort) state.reverseAbort.abort();
+  if (state.searchAbort) state.searchAbort.abort();
+  state.reverseSeq += 1;
+  state.boundarySeq += 1;
+  state.result = null;
+  state.lat = null;
+  state.lng = null;
+  state.suggestions = [];
+  state.activeIndex = -1;
+  state.lastSelectedKey = '';
+  if (state.boundaryLayer && map) { map.removeLayer(state.boundaryLayer); state.boundaryLayer = null; }
+  if (marker && map) { map.removeLayer(marker); marker = null; state.marker = null; }
+  els.search.value = '';
+  els.clearSearch.hidden = true;
+  els.suggestions.hidden = true;
+  els.suggestions.replaceChildren();
+  els.address.value = '';
+  els.postal.value = '';
+  els.regionGrid.replaceChildren();
+  els.nearest.hidden = true;
+  els.matchNote.hidden = true;
+  els.lat.textContent = '—';
+  els.lng.textContent = '—';
+  els.match.textContent = '—';
+  showEmpty();
+  if (map) map.setView([-2.5, 118], 5);
+  if (!silent) post('PETA_RESET', null);
+}
+
+/* --------------------------------- cari --------------------------------- */
+let searchTimer;
+
+function onSearchInput() {
+  const query = els.search.value.trim();
+  els.clearSearch.hidden = !query;
+  state.suggestions = [];
+  state.activeIndex = -1;
+  clearTimeout(searchTimer);
+  if (query.length < 2) {
+    els.suggestions.hidden = true;
+    els.suggestions.replaceChildren();
+    return;
+  }
+  searchTimer = setTimeout(() => runSearch(query), 260);
+}
+
+async function runSearch(query) {
+  if (state.searchAbort) state.searchAbort.abort();
+  state.searchAbort = new AbortController();
+  els.suggestions.hidden = false;
+  els.suggestions.replaceChildren(loadingRow('Mencari “' + query + '”…'));
+
+  try {
+    const data = await api('/api/v1/geo/search', { q: query, limit: 6 }, state.searchAbort.signal);
+    if (els.search.value.trim() !== query) return;
+    state.suggestions = data.results || [];
+    state.activeIndex = state.suggestions.length ? 0 : -1;
+    renderSuggestions();
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    els.suggestions.replaceChildren(emptyRow(`Pencarian gagal: ${error.message}`));
+  }
+}
+
+function loadingRow(text) {
+  const row = document.createElement('div');
+  row.className = 's-empty';
+  row.style.display = 'flex';
+  row.style.alignItems = 'center';
+  row.style.gap = '8px';
+  const spinner = document.createElement('span');
+  spinner.className = 'spinner';
+  const label = document.createElement('span');
+  label.textContent = text;
+  row.append(spinner, label);
+  return row;
+}
+
+function emptyRow(text) {
+  const row = document.createElement('div');
+  row.className = 's-empty';
+  row.textContent = text;
+  return row;
+}
+
+function suggestionType(item) {
+  if (item.kind === 'region') {
+    return ['', 'Provinsi', 'Kab/Kota', 'Kecamatan', 'Desa/Kel'][item.level] || 'Wilayah';
+  }
+  return item.category === 'address' ? 'Alamat' : 'POI';
+}
+
+function renderSuggestions() {
+  els.suggestions.replaceChildren();
+  els.suggestions.hidden = false;
+  if (!state.suggestions.length) {
+    els.suggestions.appendChild(emptyRow('Tidak ada hasil. Coba nama lain.'));
+    return;
+  }
+  state.suggestions.forEach((item, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'suggestion' + (index === state.activeIndex ? ' is-active' : '');
+    button.setAttribute('role', 'option');
+    button.setAttribute('aria-selected', String(index === state.activeIndex));
+    button.dataset.index = String(index);
+
+    const name = document.createElement('div');
+    name.className = 's-name';
+    const badge = document.createElement('span');
+    badge.className = 's-badge';
+    badge.textContent = suggestionType(item);
+    const text = document.createElement('span');
+    text.textContent = titleCase(item.name);
+    name.append(badge, text);
+
+    const detail = document.createElement('div');
+    detail.className = 's-detail';
+    detail.textContent = item.label && item.label.toLowerCase() !== item.name.toLowerCase()
+      ? item.label
+      : [item.region?.district?.name, item.region?.regency?.name, item.region?.province?.name]
+          .filter(Boolean).join(', ') || 'Indonesia';
+
+    button.append(name, detail);
+    button.addEventListener('click', () => selectSuggestion(index));
+    els.suggestions.appendChild(button);
+  });
+}
+
+function highlightSuggestion() {
+  [...els.suggestions.querySelectorAll('.suggestion')].forEach((node, index) => {
+    node.classList.toggle('is-active', index === state.activeIndex);
+    node.setAttribute('aria-selected', String(index === state.activeIndex));
+  });
+}
+
+function selectSuggestion(index) {
+  const item = state.suggestions[index];
+  if (!item) return;
+  els.suggestions.hidden = true;
+  els.suggestions.replaceChildren();
+  els.search.value = item.name;
+  els.clearSearch.hidden = false;
+  els.search.blur();
+
+  const zoom = item.kind === 'region'
+    ? ({ 1: 8, 2: 11, 3: 13, 4: 15 }[item.level] || 13)
+    : 16;
+  if (map) map.flyTo([item.lat, item.lng], zoom, { duration: 0.85 });
+
+  if (item.kind === 'region') {
+    // Tampilkan polygon wilayah yang dipilih, jangan ditimpa boundary desa.
+    showBoundary(item.id, { fit: false });
+    reverseAt(item.lat, item.lng, { skipBoundary: true });
+  } else {
+    reverseAt(item.lat, item.lng);
+  }
+}
+
+function onSearchKeydown(event) {
+  if (!state.suggestions.length || els.suggestions.hidden) {
+    if (event.key === 'ArrowDown') {
+      runSearch(els.search.value.trim());
+    }
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    state.activeIndex = (state.activeIndex + 1) % state.suggestions.length;
+    highlightSuggestion();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    state.activeIndex = (state.activeIndex - 1 + state.suggestions.length) % state.suggestions.length;
+    highlightSuggestion();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    selectSuggestion(state.activeIndex);
+  } else if (event.key === 'Escape') {
+    els.suggestions.hidden = true;
+  }
+}
+/* --------------------------- konfigurasi runtime ------------------------ */
+function applyConfig(data = {}) {
+  if (typeof data.apiBase === 'string') CONFIG.apiBase = data.apiBase.replace(/\/+$/, '');
+  if (data.theme === 'light' || data.theme === 'dark') {
+    CONFIG.theme = data.theme;
+    document.documentElement.dataset.theme = data.theme;
+  }
+  if (typeof data.tileUrl === 'string' && data.tileUrl !== CONFIG.tileUrl && tileLayer) {
+    CONFIG.tileUrl = data.tileUrl;
+    tileLayer.setUrl(data.tileUrl);
+  }
+  if (typeof data.tileAttribution === 'string' && tileLayer) {
+    CONFIG.tileAttribution = data.tileAttribution;
+    tileLayer.options.attribution = data.tileAttribution;
+    tileLayer.getAttribution && tileLayer.getAttribution();
+  }
+  if (typeof data.targetOrigin === 'string') CONFIG.targetOrigin = data.targetOrigin;
+  if (typeof data.closeButton === 'boolean') {
+    CONFIG.closeButton = data.closeButton;
+    els.close.hidden = !data.closeButton;
+  }
+  if (typeof data.readOnly === 'boolean') {
+    CONFIG.readOnly = data.readOnly;
+    if (marker) {
+      if (data.readOnly) marker.dragging?.disable();
+      else marker.dragging?.enable();
+    }
+  }
+  if (typeof data.emitOnMove === 'boolean') CONFIG.emitOnMove = data.emitOnMove;
+  if (typeof data.autoSelect === 'boolean') CONFIG.autoSelect = data.autoSelect;
+
+  const point = data.location || {
+    lat: data.lat !== undefined ? data.lat : data.latitude,
+    lng: data.lng !== undefined ? data.lng : data.longitude,
+  };
+  if (point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng))) {
+    setLocation(point.lat, point.lng, {
+      flyTo: data.flyTo !== false,
+      zoom: Number(data.zoom) || undefined,
+      skipBoundary: data.skipBoundary === true,
+    });
+  } else if (data.center && Number.isFinite(Number(data.center.lat)) && map) {
+    map.setView([Number(data.center.lat), Number(data.center.lng)], Number(data.zoom) || 5);
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (event.source !== window.parent) return;
+  if (CONFIG.allowedOrigin && event.origin !== CONFIG.allowedOrigin) return;
+  if (CONFIG.targetOrigin !== '*' && event.origin !== CONFIG.targetOrigin) return;
+
+  const message = event.data;
+  if (!message || typeof message.type !== 'string') return;
+  const data = message.data ?? message;
+
+  switch (message.type) {
+    case 'PETA_CONFIGURE':
+      applyConfig(data);
+      break;
+    case 'PETA_SET_LOCATION':
+      if (data && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+        setLocation(data.lat, data.lng, {
+          flyTo: data.flyTo !== false,
+          zoom: Number(data.zoom) || undefined,
+        });
+      }
+      break;
+    case 'PETA_SEARCH':
+      if (data?.q) {
+        els.search.value = data.q;
+        els.clearSearch.hidden = false;
+        runSearch(data.q).then(() => {
+          if (data.selectFirst && state.suggestions.length) selectSuggestion(0);
+        });
+      }
+      break;
+    case 'PETA_SET_THEME':
+      applyConfig({ theme: data?.theme });
+      break;
+    case 'PETA_CLEAR':
+      reset();
+      break;
+    case 'PETA_GET_STATE':
+      post('PETA_STATE', {
+        lat: state.lat,
+        lng: state.lng,
+        result: state.result,
+        configured: CONFIG,
+      });
+      break;
+    case 'PETA_CLOSE':
+      post('PETA_CLOSE_REQUEST', null);
+      break;
+    default:
+      break;
+  }
+});
+
+/* ------------------------------- bootstrap ------------------------------ */
+function init() {
+  initMap();
+
+  els.search.addEventListener('input', onSearchInput);
+  els.search.addEventListener('keydown', onSearchKeydown);
+  els.search.addEventListener('focus', () => {
+    if (state.suggestions.length) els.suggestions.hidden = false;
+  });
+
+  els.clearSearch.addEventListener('click', () => {
+    els.search.value = '';
+    els.clearSearch.hidden = true;
+    state.suggestions = [];
+    els.suggestions.hidden = true;
+    els.suggestions.replaceChildren();
+    els.search.focus();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.search-shell')) els.suggestions.hidden = true;
+  });
+
+  els.use.addEventListener('click', () => emitSelected());
+  els.reset.addEventListener('click', () => reset());
+  els.close.addEventListener('click', () => post('PETA_CLOSE_REQUEST', buildPayload()));
+  els.locate.addEventListener('click', () => {
+    if (!navigator.geolocation) { toast('Geolokasi tidak didukung browser'); return; }
+    els.locate.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        els.locate.disabled = false;
+        setLocation(position.coords.latitude, position.coords.longitude, { flyTo: true, zoom: 16 });
+      },
+      (error) => {
+        els.locate.disabled = false;
+        toast(`Geolokasi gagal: ${error.message}`, 3500);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  });
+
+  if (Number.isFinite(CONFIG.initial.lat) && Number.isFinite(CONFIG.initial.lng)) {
+    map.setView([CONFIG.initial.lat, CONFIG.initial.lng], CONFIG.initial.zoom || 14);
+    setLocation(CONFIG.initial.lat, CONFIG.initial.lng);
+  } else {
+    showEmpty();
+  }
+
+  post('PETA_READY', {
+    version: VERSION,
+    apiBase: CONFIG.apiBase,
+    capabilities: [
+      'reverse', 'search', 'boundary', 'drag-marker', 'geolocation',
+      'PETA_SET_LOCATION', 'PETA_CONFIGURE', 'PETA_SEARCH', 'LOCATION_SELECTED',
+    ],
+    config: { theme: CONFIG.theme, closeButton: CONFIG.closeButton },
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+
+</script>
+</body>
+</html>

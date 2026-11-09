@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peta Indonesia — Demo GIS &amp; Geocoding</title>
+<style>
+  :root{--brand:#0f766e;--ink:#10212b;--muted:#64748b;--line:#dbe3ea;--bg:#eef2f3}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  main{max-width:1180px;margin:0 auto;padding:28px 18px 48px}
+  header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:clamp(1.5rem,3vw,2.15rem);margin:0 0 8px;letter-spacing:-.02em}
+  p{line-height:1.6;margin:0;color:var(--muted)}
+  .tag{display:inline-block;background:#ccfbf1;color:#115e59;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;letter-spacing:.02em}
+  .notice{margin:18px 0;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.55}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  iframe{display:block;width:100%;height:min(72vh,720px);border:0;background:#fff}
+  .side{padding:18px}
+  .side h2{font-size:14px;margin:0 0 8px}
+  .side p{font-size:12.5px;margin:0 0 14px}
+  .links{display:grid;gap:8px}
+  .links a{display:flex;justify-content:space-between;gap:10px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12.5px;font-weight:600}
+  .links a:hover{border-color:var(--brand);color:var(--brand)}
+  .links span{color:var(--muted);font-weight:500}
+  code{background:#f1f5f9;border-radius:4px;padding:1px 4px;font-size:.9em}
+  footer{margin-top:22px;font-size:12px;color:var(--muted)}
+  footer a{color:var(--brand)}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}iframe{height:64vh}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="tag">GitHub Pages · static demo</span>
+      <h1>Peta Indonesia — GIS &amp; Geocoding</h1>
+      <p>Pemilih lokasi Leaflet dengan reverse geocoding, autocomplete, hierarki wilayah, dan <code>postMessage</code>.</p>
+    </div>
+  </header>
+
+  <div class="notice">
+    <strong>Demo statis.</strong> Halaman ini berjalan tanpa backend: data contoh area
+    Cibaduyut/Bandung tertanam di peramban. Aplikasi produksi memakai
+    <strong>FastAPI + PostgreSQL/PostGIS</strong>, yang tidak dapat dijalankan di GitHub Pages.
+    Untuk data Indonesia penuh, jalankan backend dari repositori lalu arahkan widget ke <code>apiBase</code> Anda.
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <iframe
+        src="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14&theme=light"
+        title="Demo pemilih lokasi"
+        allow="geolocation"
+        loading="lazy"></iframe>
+    </div>
+    <aside class="card side">
+      <h2>Coba demo</h2>
+      <p>Klik peta atau cari <strong>Cibaduyut</strong>, lalu pilih hasil. Tekan
+        <strong>Gunakan Lokasi Ini</strong> untuk melihat payload yang dikirim ke parent.</p>
+      <div class="links">
+        <a href="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14">Buka widget penuh <span>↗</span></a>
+        <a href="embed-example.html">Contoh embed + payload <span>↗</span></a>
+        <a href="https://github.com/robprian/peta">Kode sumber <span>GitHub</span></a>
+        <a href="https://github.com/robprian/peta/blob/main/docs/API.md">Referensi API <span>docs</span></a>
+      </div>
+      <h2 style="margin-top:20px">Endpoint produksi</h2>
+      <p>Deploy <code>backend/</code> + PostGIS, lalu buka widget dengan
+        <code>?apiBase=https://api.example.id</code>. Tanpa <code>demo=1</code>,
+        widget memanggil API sungguhan.</p>
+    </aside>
+  </div>
+
+  <footer>
+    Data demo: BPS/Kemendagri + OpenStreetMap. Demo statis ini hanya untuk presentasi UI;
+    <a href="https://github.com/robprian/peta">lihat README</a> untuk instalasi lengkap.
+  </footer>
+</main>
+</body>
+</html>

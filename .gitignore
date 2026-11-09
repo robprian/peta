@@ -1,0 +1,20 @@
+# Local environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+
+# Large datasets (download/import locally; not stored in Git)
+data/
+*.osm.pbf
+*.osm.bz2

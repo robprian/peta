@@ -1,0 +1,22 @@
+# Lint configuration for the Peta backend and ETL scripts.
+# Pinned so `ruff check` behaves the same across ruff releases.
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = [
+    "E4",  # import errors
+    "E7",  # statement errors
+    "E9",  # runtime errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "C4",  # comprehensions
+    "G",   # logging format
+    "RUF", # ruff-specific
+    "BLE", # blind except
+]
+ignore = [
+    "E501", # long lines are handled by the formatter, not the linter
+]

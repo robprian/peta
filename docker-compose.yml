@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-peta}
+      POSTGRES_USER: ${POSTGRES_USER:-peta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-peta_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-peta} -d ${POSTGRES_DB:-peta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-peta}:${POSTGRES_PASSWORD:-peta_secret}@db:5432/${POSTGRES_DB:-peta}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      PHOTON_URL: ${PHOTON_URL:-}
+      NOMINATIM_URL: ${NOMINATIM_URL:-}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Opsional: Photon untuk pencarian POI/alamat yang lebih kaya.
+  # Aktifkan dengan: docker compose --profile photon up
+  photon:
+    image: komoot/photon:latest
+    profiles: ["photon"]
+    command: ["-listen-ip", "0.0.0.0", "-port", "2322"]
+    ports:
+      - "2322:2322"
+    volumes:
+      - photondata:/photon/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  photondata:
