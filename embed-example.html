@@ -50,7 +50,7 @@
       <button id="sendLocation" type="button">Set lokasi</button>
       <button id="sendSearch" class="secondary" type="button">Cari</button>
     </div>
-    <iframe id="picker" title="Pemilih lokasi" src="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=15&autoSelect=1&v=3"></iframe>
+    <iframe id="picker" title="Pemilih lokasi" src="widget/location-picker.html?demo=1&lat=-6.2508944&lng=106.8230222&zoom=16&autoSelect=1&v=4"></iframe>
   </main>
 
   <aside class="side">
@@ -95,8 +95,8 @@ function src() {
   const p = new URLSearchParams({ theme: theme(), targetOrigin: '*', demo: base ? '0' : '1' });
   if (base) p.set('apiBase', base);
   else {
-    p.set('lat', '-6.946966'); p.set('lng', '107.598788');
-    p.set('zoom', '15'); p.set('autoSelect', '1');
+    p.set('lat', '-6.2508944'); p.set('lng', '106.8230222');
+    p.set('zoom', '16'); p.set('autoSelect', '1');
   }
   return `widget/location-picker.html?${p}`;
 }
