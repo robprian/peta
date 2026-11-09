@@ -12,15 +12,19 @@ Photon are optional enrichments.
 ## Live demo (GitHub Pages)
 
 - Landing + interactive demo: <https://robprian.github.io/peta/>
-- Widget: <https://robprian.github.io/peta/widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14>
+- Mampang Prapatan IV, Jakarta: <https://robprian.github.io/peta/widget/location-picker.html?demo=1&lat=-6.2508944&lng=106.8230222&zoom=16>
+- Wisma Mulia 2, Gatot Subroto: <https://robprian.github.io/peta/widget/location-picker.html?demo=1&lat=-6.2342466&lng=106.8220762&zoom=16>
+- Bandung (Kebon Lega / Cibaduyut): <https://robprian.github.io/peta/widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=15>
 - Embed/payload example: <https://robprian.github.io/peta/embed-example.html>
 
 GitHub Pages hosts a **static** build only: `?demo=1` enables a small in-browser
-adapter (`frontend/demo/demo-api.js`) backed by the Bandung fixture, so the map,
-search, reverse geocoding and `LOCATION_SELECTED` flow work without a server.
-The real FastAPI + PostgreSQL/PostGIS backend cannot run on Pages; deploy
-`backend/` separately and pass `?apiBase=https://your-api.example.id` (without
-`demo=1`) for full Indonesia coverage.
+adapter (`frontend/demo/demo-api.js`) backed by the committed fixture
+`frontend/demo/demo-data.json`. Province, regency and district boundaries come
+from **BPS**; village/kelurahan boundaries come from **OpenStreetMap** admin
+level 7. The map, search, reverse geocoding and `LOCATION_SELECTED` flow work
+without a server. The real FastAPI + PostgreSQL/PostGIS backend cannot run on
+Pages; deploy `backend/` separately and pass `?apiBase=https://your-api.example.id`
+(without `demo=1`) for full Indonesia coverage.
 
 ## Features
 
@@ -96,18 +100,20 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f migrations/003_functions.sql
 ```
 
-Load the small Bandung demo fixture (Python 3.12 with `psycopg`):
+Load the demo fixture (Jakarta + Bandung; Python 3.12+ with `psycopg`):
 
 ```bash
 python -m pip install 'psycopg[binary]'
-python etl/seed_demo.py --database-url "$DATABASE_URL"
+python etl/seed_demo.py --database-url "$DATABASE_URL" --reset
 ```
 
 Check the API:
 
 ```bash
 curl http://localhost:8000/health
-curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.946966&lng=107.598788'
+curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.2508944&lng=106.8230222'
+curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.2342466&lng=106.8220762'
+curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.953196&lng=107.594708'
 curl 'http://localhost:8000/api/v1/geo/search?q=Cibaduyut'
 ```
 
@@ -232,8 +238,10 @@ python3 -m http.server 8080 -d dist
 # open http://localhost:8080/
 ```
 
-The Pages bundle adds `frontend/demo/demo-api.js` to the widget and is intended
-for UI demos; it does not replace the API.
+The Pages bundle adds `demo/demo-data.js` + `frontend/demo/demo-api.js` to the
+widget and is intended for UI demos; it does not replace the API. Regenerate the
+fixture after changing the source boundaries with
+`python3 scripts/build_demo_fixture.py`.
 
 Minimal iframe:
 

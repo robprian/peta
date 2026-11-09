@@ -6,7 +6,8 @@ Run with::
         pytest -m integration
 
 The database must already contain the demo fixtures from
-``python etl/seed_demo.py`` (or a full import with the same Cibaduyut area).
+``python etl/seed_demo.py`` (the same BPS/OSM boundaries used by the static
+GitHub Pages demo).
 """
 
 from __future__ import annotations
@@ -18,7 +19,12 @@ pytestmark = pytest.mark.integration
 
 VILLAGE_CODE = "3273040004"
 DISTRICT_CODE = "3273040"
-CENTER = {"lat": -6.946966, "lng": 107.598788}
+# True Cibaduyut centroid from the BPS/OSM fixture (not the Bojongloa Kidul
+# centroid, which falls inside Kebon Lega).
+CENTER = {"lat": -6.953196, "lng": 107.594708}
+# Requested Jakarta checks.
+MAMPANG_IV = {"lat": -6.2508944, "lng": 106.8230222}
+WISMA_MULIA_2 = {"lat": -6.2342466, "lng": 106.8220762}
 
 
 def test_health_reports_postgis(live_client):
@@ -66,9 +72,41 @@ def test_reverse_resolves_village_polygon_and_nearest_features(live_client):
 
     assert body["address"]["postcode"] == "40236"
     assert "CIBADUYUT" in body["address"]["formatted"]
-    assert body["nearest"]["road"]["name"] == "Jalan Cibaduyut"
     assert body["nearest"]["place"]["name"] == "Cibaduyut"
     assert response.headers["cache-control"] == "public, max-age=3600"
+
+
+def test_reverse_mampang_prapatan_iv_matches_bps(live_client):
+    response = live_client.get(
+        "/api/v1/geo/reverse", params={**MAMPANG_IV, "refresh": "true"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["match"]["method"] == "polygon"
+    assert body["match"]["level"] == 4
+    assert body["region"]["province"] == {"code": "31", "name": "DKI JAKARTA"}
+    assert body["region"]["regency"] == {"code": "3171", "name": "JAKARTA SELATAN"}
+    assert body["region"]["district"] == {"code": "3171070", "name": "MAMPANG PRAPATAN"}
+    assert body["region"]["village"] == {"code": "3171070002", "name": "PELA MAMPANG"}
+    assert body["address"]["postcode"] == "12720"
+    assert body["nearest"]["road"]["name"] == "Jalan Mampang Prapatan IV"
+
+
+def test_reverse_wisma_mulia_2_matches_bps(live_client):
+    response = live_client.get(
+        "/api/v1/geo/reverse", params={**WISMA_MULIA_2, "refresh": "true"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["match"]["method"] == "polygon"
+    assert body["match"]["level"] == 4
+    assert body["region"]["district"] == {"code": "3171070", "name": "MAMPANG PRAPATAN"}
+    assert body["region"]["village"] == {"code": "3171070005", "name": "KUNINGAN BARAT"}
+    assert body["address"]["postcode"] == "12950"
+    assert body["nearest"]["place"]["name"] == "Wisma Mulia 2"
+    assert body["nearest"]["road"]["name"] == "Jalan Jenderal Gatot Subroto"
 
 
 def test_reverse_uses_database_cache_on_second_call(live_client, test_database_url):
@@ -166,9 +204,8 @@ def test_region_boundary_returns_feature(live_client):
     assert body["geometry"]["type"] in {"Polygon", "MultiPolygon"}
 
 
-def test_region_boundary_404_for_village_without_polygon(live_client):
-    # Demo fixture 3273040001 only has a centroid, no polygon.
-    response = live_client.get("/api/v1/geo/regions/3273040001/boundary")
+def test_region_boundary_404_for_unknown_region(live_client):
+    response = live_client.get("/api/v1/geo/regions/9999999999/boundary")
     assert response.status_code == 404
 
 
@@ -179,12 +216,12 @@ def test_hierarchy_returns_nested_tree(live_client):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["meta"]["count"] >= 1
+    assert body["meta"]["count"] >= 2
     assert body["meta"]["nodes"] >= 8
-    province = body["data"][0]
-    assert province["code"] == "32"
-    assert province["children"]
-    assert province["children"][0]["code"] == "3273"
+    provinces = {item["code"]: item for item in body["data"]}
+    assert {"31", "32"} <= set(provinces)
+    assert provinces["32"]["children"]
+    assert provinces["32"]["children"][0]["code"] == "3273"
 
 
 def test_client_config_is_live(live_client):

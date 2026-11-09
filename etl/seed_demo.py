@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Seed a tiny, self-contained demo dataset around Cibaduyut, Bandung.
+"""Seed a self-contained demo dataset for the API.
 
-Unlike import_admin.py this script does not need the BPS files: it inserts a
-province/regency/district/village chain with synthetic polygons plus a few OSM
-places/roads so every API endpoint can be exercised immediately.
+The fixtures in ``frontend/demo/demo-data.json`` are the single source of
+truth for both the static GitHub Pages demo and this database seed:
+
+* province / regency / district polygons: BPS (via data/geojson)
+* village / kelurahan polygons: OpenStreetMap administrative boundaries
+* places and roads: OSM/Nominatim examples
 
 Usage:
     python3 etl/seed_demo.py \
-        --database-url postgresql://peta:peta_secret@localhost:5432/peta
-
-The polygons are small rectangles around real coordinates. They are demo
-fixtures, not authoritative boundaries. Use import_admin.py for real
-BPS/Kemendagri boundaries.
+        --database-url postgresql://peta:peta_secret@localhost:5432/peta --reset
 """
 
 from __future__ import annotations
@@ -21,96 +20,33 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import psycopg
 
 log = logging.getLogger("etl.demo")
 
-# box = (min_lon, min_lat, max_lon, max_lat), point = (lat, lon)
-REGIONS: list[dict[str, Any]] = [
-    {"code": "32", "level": 1, "name": "JAWA BARAT", "parent": None, "province": "32",
-         "regency": None, "district": None, "postal": ["40100", "40200"],
-         "box": (107.500, -7.000, 107.750, -6.850), "point": (-6.9033, 107.6426)},
-    {"code": "3273", "level": 2, "name": "BANDUNG", "parent": "32", "province": "32",
-         "regency": "3273", "district": None, "postal": ["40100", "40200"],
-         "box": (107.550, -6.980, 107.720, -6.870), "point": (-6.9033, 107.6426)},
-    {"code": "3273040", "level": 3, "name": "BOJONGLOA KIDUL", "parent": "3273",
-         "province": "32", "regency": "3273", "district": "3273040",
-         "postal": ["40234", "40235", "40236", "40237", "40238", "40239"],
-         "box": (107.585, -6.955, 107.610, -6.940), "point": (-6.9470, 107.5988)},
-    {"code": "3273080", "level": 3, "name": "BANDUNG KIDUL", "parent": "3273",
-         "province": "32", "regency": "3273", "district": "3273080",
-         "postal": ["40266", "40267", "40268", "40269"],
-         "box": (107.615, -6.965, 107.645, -6.945), "point": (-6.9559, 107.6296)},
-    {"code": "3273040004", "level": 4, "name": "CIBADUYUT", "parent": "3273040",
-         "province": "32", "regency": "3273", "district": "3273040", "postal": ["40236"],
-         "box": (107.595, -6.950, 107.602, -6.944), "point": (-6.946966, 107.598788)},
-    {"code": "3273040001", "level": 4, "name": "CIBADUYUT KIDUL", "parent": "3273040",
-         "province": "32", "regency": "3273", "district": "3273040", "postal": ["40239"],
-         "box": None, "point": (-6.9475, 107.5965)},
-    {"code": "3273040002", "level": 4, "name": "CIBADUYUT WETAN", "parent": "3273040",
-         "province": "32", "regency": "3273", "district": "3273040", "postal": ["40238"],
-         "box": None, "point": (-6.9460, 107.6010)},
-    {"code": "3273080001", "level": 4, "name": "BATUNUNGGAL", "parent": "3273080",
-         "province": "32", "regency": "3273", "district": "3273080", "postal": ["40266"],
-         "box": None, "point": (-6.9559, 107.6296)},
-]
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = ROOT / "frontend/demo/demo-data.json"
 
-PLACES: list[dict[str, Any]] = [
-    {"osm_type": "n", "osm_id": 900000001, "name": "Pasar Cibaduyut",
-         "display_name": "Pasar Cibaduyut, Bojongloa Kidul, Bandung",
-         "category": "amenity", "type": "marketplace", "lat": -6.9470, "lon": 107.5980,
-         "importance": 0.55, "rank_search": 30,
-         "addr_street": "Jalan Cibaduyut", "addr_housenumber": "1",
-         "addr_postcode": "40236", "addr_village": "CIBADUYUT",
-         "addr_subdistrict": "BOJONGLOA KIDUL", "addr_city": "BANDUNG",
-         "addr_district": "BANDUNG", "addr_state": "JAWA BARAT"},
-    {"osm_type": "n", "osm_id": 900000002, "name": "Cibaduyut",
-         "display_name": "Cibaduyut, Bojongloa Kidul, Bandung, Jawa Barat",
-         "category": "place", "type": "village", "lat": -6.946966, "lon": 107.598788,
-         "importance": 0.75, "rank_search": 19,
-         "addr_street": None, "addr_housenumber": None,
-         "addr_postcode": "40236", "addr_village": "CIBADUYUT",
-         "addr_subdistrict": "BOJONGLOA KIDUL", "addr_city": "BANDUNG",
-         "addr_district": "BANDUNG", "addr_state": "JAWA BARAT"},
-    {"osm_type": "n", "osm_id": 900000003, "name": "Bandung",
-         "display_name": "Bandung, Jawa Barat, Indonesia",
-         "category": "place", "type": "city", "lat": -6.9033, "lon": 107.6426,
-         "importance": 0.95, "rank_search": 16,
-         "addr_street": None, "addr_housenumber": None, "addr_postcode": None,
-         "addr_village": None, "addr_subdistrict": None, "addr_city": "BANDUNG",
-         "addr_district": "BANDUNG", "addr_state": "JAWA BARAT"},
-    {"osm_type": "n", "osm_id": 900000004, "name": "Toko Sepatu Cibaduyut",
-         "display_name": "Toko Sepatu Cibaduyut, Jalan Cibaduyut, Bandung",
-         "category": "shop", "type": "shoes", "lat": -6.9465, "lon": 107.5977,
-         "importance": 0.35, "rank_search": 30,
-         "addr_street": "Jalan Cibaduyut", "addr_housenumber": "88",
-         "addr_postcode": "40236", "addr_village": "CIBADUYUT",
-         "addr_subdistrict": "BOJONGLOA KIDUL", "addr_city": "BANDUNG",
-         "addr_district": "BANDUNG", "addr_state": "JAWA BARAT"},
-]
 
-ROADS: list[dict[str, Any]] = [
-    {"osm_id": 800000001, "name": "Jalan Cibaduyut", "highway": "residential", "ref": None,
-         "wkt": "LINESTRING(107.5978 -6.9510, 107.5982 -6.9470, 107.5990 -6.9430)"},
-    {"osm_id": 800000002, "name": "Jalan Soekarno-Hatta", "highway": "trunk", "ref": "AH2",
-         "wkt": "LINESTRING(107.5800 -6.9400, 107.6000 -6.9420, 107.6200 -6.9440)"},
-    {"osm_id": 800000003, "name": "Jalan Kopo", "highway": "primary", "ref": None,
-         "wkt": "LINESTRING(107.5850 -6.9600, 107.5900 -6.9500, 107.5950 -6.9400)"},
-]
+def load_fixture() -> dict[str, Any]:
+    with FIXTURE.open() as fh:
+        return json.load(fh)
+
+
+def hierarchy_codes(code: str, level: int) -> dict[str, str | None]:
+    return {
+        "province": code[:2] if level >= 1 else None,
+        "regency": code[:4] if level >= 2 else None,
+        "district": code[:7] if level >= 3 else None,
+    }
+
 
 REGION_SQL = """
 WITH src AS (
-    SELECT
-        CASE WHEN %(min_lon)s::float8 IS NOT NULL THEN
-            ST_Multi(ST_MakeEnvelope(
-                %(min_lon)s::float8, %(min_lat)s::float8,
-                %(max_lon)s::float8, %(max_lat)s::float8, 4326))
-        END AS geom,
-        CASE WHEN %(lat)s::float8 IS NOT NULL THEN
-            ST_SetSRID(ST_MakePoint(%(lng)s::float8, %(lat)s::float8), 4326)
-        END AS pt
+    SELECT ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%(geojson)s), 4326)) AS geom
 )
 INSERT INTO geo.admin_regions (
     code, kemendagri_code, level, name, parent_code,
@@ -121,14 +57,12 @@ SELECT
     %(code)s, %(code)s, %(level)s, %(name)s, %(parent)s,
     %(province)s, %(regency)s, %(district)s, %(postal)s::text[],
     src.geom,
-    CASE WHEN src.geom IS NULL THEN NULL
-         ELSE ST_SimplifyPreserveTopology(src.geom, 0.0005) END,
-    COALESCE(src.pt, ST_PointOnSurface(src.geom)),
-    CASE WHEN src.geom IS NULL THEN NULL ELSE ST_Envelope(src.geom) END,
-    CASE WHEN src.geom IS NULL THEN NULL
-         ELSE ST_Area(src.geom::geography) / 1000000.0 END,
+    ST_SimplifyPreserveTopology(src.geom, 0.0001),
+    ST_SetSRID(ST_MakePoint(%(lng)s, %(lat)s), 4326),
+    ST_Envelope(src.geom),
+    ST_Area(src.geom::geography) / 1000000.0,
     'demo',
-    '{"demo": true}'::jsonb
+    %(attrs)s::jsonb
 FROM src
 ON CONFLICT (code) DO UPDATE SET
     level = EXCLUDED.level,
@@ -138,11 +72,11 @@ ON CONFLICT (code) DO UPDATE SET
     regency_code = EXCLUDED.regency_code,
     district_code = EXCLUDED.district_code,
     postal_codes = EXCLUDED.postal_codes,
-    geom = COALESCE(EXCLUDED.geom, geo.admin_regions.geom),
-    geom_simplified = COALESCE(EXCLUDED.geom_simplified, geo.admin_regions.geom_simplified),
-    centroid = COALESCE(EXCLUDED.centroid, geo.admin_regions.centroid),
-    bbox = COALESCE(EXCLUDED.bbox, geo.admin_regions.bbox),
-    area_km2 = COALESCE(EXCLUDED.area_km2, geo.admin_regions.area_km2),
+    geom = EXCLUDED.geom,
+    geom_simplified = EXCLUDED.geom_simplified,
+    centroid = EXCLUDED.centroid,
+    bbox = EXCLUDED.bbox,
+    area_km2 = EXCLUDED.area_km2,
     source = EXCLUDED.source,
     attrs = geo.admin_regions.attrs || EXCLUDED.attrs,
     updated_at = now()
@@ -156,10 +90,10 @@ INSERT INTO geo.osm_places (
     addr_subdistrict, addr_city, addr_district, addr_state,
     tags, importance, rank_search
 ) VALUES (
-    %(osm_type)s, %(osm_id)s, %(name)s, %(display_name)s, %(category)s, %(type)s,
+    'n', %(osm_id)s, %(name)s, %(display_name)s, %(category)s, %(type)s,
     %(lat)s, %(lon)s, ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326),
-    %(addr_housenumber)s, %(addr_street)s, %(addr_postcode)s, %(addr_village)s,
-    %(addr_subdistrict)s, %(addr_city)s, %(addr_district)s, %(addr_state)s,
+    NULL, NULL, %(postcode)s, %(village)s,
+    %(district)s, %(regency)s, %(province)s, %(province)s,
     %(tags)s::jsonb, %(importance)s, %(rank_search)s
 )
 ON CONFLICT (osm_type, osm_id) DO UPDATE SET
@@ -170,8 +104,6 @@ ON CONFLICT (osm_type, osm_id) DO UPDATE SET
     lat = EXCLUDED.lat,
     lon = EXCLUDED.lon,
     geom = EXCLUDED.geom,
-    addr_housenumber = EXCLUDED.addr_housenumber,
-    addr_street = EXCLUDED.addr_street,
     addr_postcode = EXCLUDED.addr_postcode,
     addr_village = EXCLUDED.addr_village,
     addr_subdistrict = EXCLUDED.addr_subdistrict,
@@ -199,30 +131,44 @@ ON CONFLICT (osm_id) DO UPDATE SET
 
 
 def region_params(item: dict[str, Any]) -> dict[str, Any]:
-    min_lon, min_lat, max_lon, max_lat = item["box"] or (None, None, None, None)
-    lat, lng = item["point"] or (None, None)
+    codes = hierarchy_codes(item["code"], int(item["level"]))
+    lat, lng = item["centroid"]
     return {
         "code": item["code"],
         "level": item["level"],
         "name": item["name"],
         "parent": item["parent"],
-        "province": item["province"],
-        "regency": item["regency"],
-        "district": item["district"],
-        "postal": item["postal"],
-        "min_lon": min_lon,
-        "min_lat": min_lat,
-        "max_lon": max_lon,
-        "max_lat": max_lat,
+        **codes,
+        "postal": item.get("postal") or [],
+        "geojson": json.dumps(item["geometry"], separators=(",", ":")),
         "lat": lat,
         "lng": lng,
+        "attrs": json.dumps({"demo": True, "source": "peta-demo-fixture"}),
     }
 
 
-def place_params(item: dict[str, Any]) -> dict[str, Any]:
+def place_params(index: int, item: dict[str, Any]) -> dict[str, Any]:
     params = dict(item)
+    params["osm_id"] = int(item.get("id") or 900000000 + index)
     params["tags"] = json.dumps({"demo": True, "name": item["name"]})
+    params["importance"] = 0.5
+    params["rank_search"] = 30
+    params["village"] = None
+    params["district"] = None
+    params["regency"] = None
+    params["province"] = None
     return params
+
+
+def road_params(index: int, item: dict[str, Any]) -> dict[str, Any]:
+    coords = ", ".join(f"{lng} {lat}" for lat, lng in item["pts"])
+    return {
+        "osm_id": 800000000 + index,
+        "name": item["name"],
+        "highway": item.get("highway"),
+        "ref": item.get("ref"),
+        "wkt": f"LINESTRING({coords})",
+    }
 
 
 def main() -> int:
@@ -237,6 +183,11 @@ def main() -> int:
         log.error("DATABASE_URL belum diset")
         return 2
 
+    data = load_fixture()
+    regions = data["regions"]
+    places = data.get("places") or []
+    roads = data.get("roads") or []
+
     try:
         with psycopg.connect(args.database_url) as conn:
             if args.reset:
@@ -249,10 +200,16 @@ def main() -> int:
             with conn.cursor() as cur:
                 cur.executemany(
                     REGION_SQL,
-                    [region_params(item) for item in sorted(REGIONS, key=lambda r: r["level"])],
+                    [region_params(item) for item in sorted(regions, key=lambda r: r["level"])],
                 )
-                cur.executemany(PLACE_SQL, [place_params(item) for item in PLACES])
-                cur.executemany(ROAD_SQL, ROADS)
+                cur.executemany(
+                    PLACE_SQL,
+                    [place_params(i, item) for i, item in enumerate(places, start=1)],
+                )
+                cur.executemany(
+                    ROAD_SQL,
+                    [road_params(i, item) for i, item in enumerate(roads, start=1)],
+                )
 
             conn.execute("SELECT geo.refresh_region_full_names()")
             conn.execute("ANALYZE geo.admin_regions")
@@ -263,9 +220,11 @@ def main() -> int:
         log.error("Pastikan migrasi sudah dijalankan: make migrate")
         return 1
 
-    log.info("Demo siap: %s wilayah, %s place, %s road", len(REGIONS), len(PLACES), len(ROADS))
-    log.info("Coba: curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.946966&lng=107.598788'")
-    log.info("Cari: curl 'http://localhost:8000/api/v1/geo/search?q=Cibaduyut'")
+    log.info("Demo siap: %s wilayah, %s place, %s road", len(regions), len(places), len(roads))
+    log.info("Coba Jakarta: curl 'http://localhost:8000/api/v1/geo/reverse"
+             "?lat=-6.2508944&lng=106.8230222'")
+    log.info("Coba Bandung: curl 'http://localhost:8000/api/v1/geo/reverse"
+             "?lat=-6.953196&lng=107.594708'")
     return 0
 
 

@@ -35,7 +35,7 @@ service, and an embeddable Leaflet widget.
 | OSM ETL | `etl/import_osm.py` | GeoJSONSeq from `osmium export` -> places/roads |
 | OSM shell driver | `etl/run_osm_import.sh` | Filter, export, import, village centroid backfill |
 | Village linker | `etl/link_osm_villages.sql` | Match village names to OSM place nodes inside districts |
-| Demo seed | `etl/seed_demo.py` | Small Bandung fixture for development and tests |
+| Demo seed | `etl/seed_demo.py` | Jakarta + Bandung BPS/OSM fixture for development and tests |
 | API | `backend/app` | FastAPI routes, services, pool, cache, schemas |
 | Widget | `frontend/widget/location-picker.html` | Standalone Leaflet UI and `postMessage` protocol |
 | Wrappers | `frontend/embed`, `frontend/react` | Web Component and typed React component |

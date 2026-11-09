@@ -26,8 +26,16 @@ dahulu (lihat README utama), atau ubah nilai **API** di toolbar demo.
 
 Demo statis tanpa backend: buka
 <https://robprian.github.io/peta/> atau tambahkan `?demo=1` ke URL widget.
-Mode ini memakai fixture Bandung di `frontend/demo/demo-api.js`; data Indonesia
-penuh tetap memerlukan API FastAPI/PostGIS.
+Mode ini memakai fixture bersama `frontend/demo/demo-data.json`: batas
+provinsi/kota/kecamatan dari BPS dan batas desa/kelurahan dari OpenStreetMap.
+Data Indonesia penuh tetap memerlukan API FastAPI/PostGIS.
+
+Contoh titik uji:
+
+- Mampang Prapatan IV: `?demo=1&lat=-6.2508944&lng=106.8230222&zoom=16`
+- Wisma Mulia 2, Gatot Subroto: `?demo=1&lat=-6.2342466&lng=106.8220762&zoom=16`
+- Kebon Lega, Bandung: `?demo=1&lat=-6.946966&lng=107.598788&zoom=15`
+- Cibaduyut, Bandung: `?demo=1&lat=-6.953196&lng=107.594708&zoom=16`
 
 ## 1. Embed langsung dengan iframe
 
@@ -47,7 +55,7 @@ Responsif: di layar sempit panel detail otomatis menjadi bottom sheet.
 | Parameter | Default | Keterangan |
 | --- | --- | --- |
 | `apiBase` | same-origin / `http://localhost:8000` | Base URL API |
-| `demo` | `1` otomatis di `*.github.io` | `1` mengaktifkan adapter demo statis Bandung (tanpa API) |
+| `demo` | `1` otomatis di `*.github.io` | `1` mengaktifkan adapter demo statis (BPS + OpenStreetMap, tanpa API) |
 | `theme` | `light` / `dark` (prefers-color-scheme) | `light` atau `dark` |
 | `lat`, `lng` | — | Posisi pin awal |
 | `zoom` | `5` | Zoom awal |

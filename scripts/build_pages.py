@@ -8,10 +8,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist"
-ASSET_VERSION = "3"
+ASSET_VERSION = "4"
 DEMO_IFRAME = (
-    "widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788"
-    f"&zoom=15&autoSelect=1&v={ASSET_VERSION}"
+    "widget/location-picker.html?demo=1&lat=-6.2508944&lng=106.8230222"
+    f"&zoom=16&autoSelect=1&v={ASSET_VERSION}"
 )
 
 
@@ -35,11 +35,17 @@ def main() -> None:
     widget = replace_once(
         widget,
         leaflet,
-        leaflet + f'\n<script src="../demo/demo-api.js?v={ASSET_VERSION}"></script>',
+        leaflet
+        + f'\n<script src="../demo/demo-data.js?v={ASSET_VERSION}"></script>'
+        + f'\n<script src="../demo/demo-api.js?v={ASSET_VERSION}"></script>',
     )
     (OUT / "widget/location-picker.html").write_text(widget)
 
     shutil.copytree(ROOT / "frontend/demo", OUT / "demo")
+    demo_json = (OUT / "demo/demo-data.json").read_text()
+    (OUT / "demo/demo-data.js").write_text(
+        "window.PETA_DEMO_DATA=" + demo_json.rstrip() + ";\n"
+    )
     (OUT / "embed").mkdir()
     shutil.copy2(
         ROOT / "frontend/embed/peta-location-picker.js",
@@ -71,8 +77,8 @@ def main() -> None:
         "demo: base ? '0' : '1' });\n"
         "  if (base) p.set('apiBase', base);\n"
         "  else {\n"
-        "    p.set('lat', '-6.946966'); p.set('lng', '107.598788');\n"
-        "    p.set('zoom', '15'); p.set('autoSelect', '1');\n"
+        "    p.set('lat', '-6.2508944'); p.set('lng', '106.8230222');\n"
+        "    p.set('zoom', '16'); p.set('autoSelect', '1');\n"
         "  }\n"
         "  return `widget/location-picker.html?${p}`;\n"
         "}",

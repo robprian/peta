@@ -74,44 +74,44 @@ database.
 Example:
 
 ```bash
-curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.946966&lng=107.598788'
+curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.2508944&lng=106.8230222'
 ```
 
 ```json
 {
   "found": true,
-  "location": { "lat": -6.946966, "lng": 107.598788 },
+  "location": { "lat": -6.2508944, "lng": 106.8230222 },
   "region": {
-    "province": { "code": "32", "name": "JAWA BARAT" },
-    "regency": { "code": "3273", "name": "BANDUNG" },
-    "district": { "code": "3273040", "name": "BOJONGLOA KIDUL" },
-    "village": { "code": "3273040004", "name": "CIBADUYUT" }
+    "province": { "code": "31", "name": "DKI JAKARTA" },
+    "regency": { "code": "3171", "name": "JAKARTA SELATAN" },
+    "district": { "code": "3171070", "name": "MAMPANG PRAPATAN" },
+    "village": { "code": "3171070002", "name": "PELA MAMPANG" }
   },
   "address": {
-    "line1": "Jalan Cibaduyut",
-    "street": "Jalan Cibaduyut",
+    "line1": "Jalan Mampang Prapatan IV",
+    "street": "Jalan Mampang Prapatan IV",
     "housenumber": null,
-    "village": "CIBADUYUT",
-    "district": "BOJONGLOA KIDUL",
-    "regency": "BANDUNG",
-    "province": "JAWA BARAT",
-    "postcode": "40236",
-    "formatted": "Jalan Cibaduyut, CIBADUYUT, BOJONGLOA KIDUL, BANDUNG, JAWA BARAT, 40236",
-    "label": "Cibaduyut, Bojongloa Kidul, Bandung, Jawa Barat"
+    "village": "PELA MAMPANG",
+    "district": "MAMPANG PRAPATAN",
+    "regency": "JAKARTA SELATAN",
+    "province": "DKI JAKARTA",
+    "postcode": "12720",
+    "formatted": "Jalan Mampang Prapatan IV, PELA MAMPANG, MAMPANG PRAPATAN, JAKARTA SELATAN, DKI JAKARTA, 12720",
+    "label": "Jalan Mampang Prapatan IV, Pela Mampang, Mampang Prapatan, Jakarta Selatan"
   },
   "nearest": {
     "road": {
-      "name": "Jalan Cibaduyut",
+      "name": "Jalan Mampang Prapatan IV",
       "ref": null,
       "highway": "residential",
-      "distance_m": 63.0
+      "distance_m": 0.0
     },
     "place": {
-      "name": "Cibaduyut",
-      "category": "place",
-      "type": "village",
-      "lat": -6.946966,
-      "lon": 107.598788,
+      "name": "Mampang Prapatan IV",
+      "category": "highway",
+      "type": "residential",
+      "lat": -6.2508944,
+      "lon": 106.8230222,
       "distance_m": 0.0
     }
   },
@@ -123,7 +123,7 @@ curl 'http://localhost:8000/api/v1/geo/reverse?lat=-6.946966&lng=107.598788'
     "confidence": 0.98
   },
   "source": "postgis+osm",
-  "cached": true
+  "cached": null
 }
 ```
 

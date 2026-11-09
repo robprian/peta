@@ -41,8 +41,9 @@
   </header>
 
   <div class="notice">
-    <strong>Demo statis.</strong> Halaman ini berjalan tanpa backend: data contoh area
-    Cibaduyut/Bandung tertanam di peramban. Aplikasi produksi memakai
+    <strong>Demo statis.</strong> Halaman ini berjalan tanpa backend. Batas
+    provinsi/kota/kecamatan memakai poligon <strong>BPS</strong>, sedangkan
+    desa/kelurahan memakai poligon <strong>OpenStreetMap</strong>. Aplikasi produksi memakai
     <strong>FastAPI + PostgreSQL/PostGIS</strong>, yang tidak dapat dijalankan di GitHub Pages.
     Untuk data Indonesia penuh, jalankan backend dari repositori lalu arahkan widget ke <code>apiBase</code> Anda.
   </div>
@@ -50,17 +51,21 @@
   <div class="grid">
     <div class="card">
       <iframe
-        src="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14&theme=light&v=3"
+        src="widget/location-picker.html?demo=1&lat=-6.2508944&lng=106.8230222&zoom=16&theme=light&v=4"
         title="Demo pemilih lokasi"
         allow="geolocation"
         loading="lazy"></iframe>
     </div>
     <aside class="card side">
       <h2>Coba demo</h2>
-      <p>Klik peta atau cari <strong>Cibaduyut</strong>, lalu pilih hasil. Tekan
+      <p>Klik peta atau cari <strong>Mampang Prapatan IV</strong>, <strong>Wisma Mulia 2</strong>,
+        <strong>Cibaduyut</strong>, atau <strong>Kebon Lega</strong>. Tekan
         <strong>Gunakan Lokasi Ini</strong> untuk melihat payload yang dikirim ke parent.</p>
       <div class="links">
-        <a href="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14&v=3">Buka widget penuh <span>↗</span></a>
+        <a href="widget/location-picker.html?demo=1&lat=-6.2508944&lng=106.8230222&zoom=16&v=4">Mampang Prapatan IV <span>Jakarta ↗</span></a>
+        <a href="widget/location-picker.html?demo=1&lat=-6.2342466&lng=106.8220762&zoom=16&v=4">Wisma Mulia 2 <span>Jakarta ↗</span></a>
+        <a href="widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=15&v=4">Kebon Lega <span>Bandung ↗</span></a>
+        <a href="widget/location-picker.html?demo=1&lat=-6.953196&lng=107.594708&zoom=16&v=4">Cibaduyut <span>Bandung ↗</span></a>
         <a href="embed-example.html">Contoh embed + payload <span>↗</span></a>
         <a href="https://github.com/robprian/peta">Kode sumber <span>GitHub</span></a>
         <a href="https://github.com/robprian/peta/blob/main/docs/API.md">Referensi API <span>docs</span></a>
