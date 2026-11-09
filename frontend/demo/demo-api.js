@@ -1,11 +1,15 @@
 /*
- * Demo API statis untuk GitHub Pages. Aktif hanya dengan ?demo=1.
+ * Demo API statis untuk GitHub Pages. Aktif dengan ?demo=1, atau otomatis
+ * di *.github.io selama tidak ada apiBase (Pages tidak bisa menjalankan API).
  * Data berasal dari etl/seed_demo.py (area Cibaduyut, Bandung).
  * Tidak menggantikan backend FastAPI/PostGIS; hanya untuk demo UI.
  */
 (() => {
   const params = new URLSearchParams(location.search);
-  if (params.get('demo') !== '1') return;
+  const onPages = /\.github\.io$/i.test(location.hostname);
+  const wantsDemo = params.get('demo') === '1';
+  const hasApi = Boolean(params.get('apiBase'));
+  if (!(wantsDemo || (onPages && !hasApi))) return;
 
   const R = [
     { c: '32', l: 1, n: 'JAWA BARAT', p: null, po: ['40100', '40200'], b: [107.5, -7, 107.75, -6.85], pt: [-6.9033, 107.6426] },

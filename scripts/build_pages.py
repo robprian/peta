@@ -8,9 +8,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist"
+ASSET_VERSION = "3"
 DEMO_IFRAME = (
     "widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788"
-    "&zoom=15&autoSelect=1"
+    f"&zoom=15&autoSelect=1&v={ASSET_VERSION}"
 )
 
 
@@ -32,7 +33,9 @@ def main() -> None:
         ' crossorigin=""></script>'
     )
     widget = replace_once(
-        widget, leaflet, leaflet + '\n<script src="../demo/demo-api.js"></script>'
+        widget,
+        leaflet,
+        leaflet + f'\n<script src="../demo/demo-api.js?v={ASSET_VERSION}"></script>',
     )
     (OUT / "widget/location-picker.html").write_text(widget)
 

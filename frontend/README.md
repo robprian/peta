@@ -47,7 +47,7 @@ Responsif: di layar sempit panel detail otomatis menjadi bottom sheet.
 | Parameter | Default | Keterangan |
 | --- | --- | --- |
 | `apiBase` | same-origin / `http://localhost:8000` | Base URL API |
-| `demo` | `0` | `1` mengaktifkan adapter demo statis Bandung (tanpa API) |
+| `demo` | `1` otomatis di `*.github.io` | `1` mengaktifkan adapter demo statis Bandung (tanpa API) |
 | `theme` | `light` / `dark` (prefers-color-scheme) | `light` atau `dark` |
 | `lat`, `lng` | — | Posisi pin awal |
 | `zoom` | `5` | Zoom awal |
