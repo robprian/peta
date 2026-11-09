@@ -9,6 +9,19 @@ location picker that reports its selection to the parent page via
 The stack is self-hosted. No external geocoder is required; Nominatim and
 Photon are optional enrichments.
 
+## Live demo (GitHub Pages)
+
+- Landing + interactive demo: <https://robprian.github.io/peta/>
+- Widget: <https://robprian.github.io/peta/widget/location-picker.html?demo=1&lat=-6.946966&lng=107.598788&zoom=14>
+- Embed/payload example: <https://robprian.github.io/peta/embed-example.html>
+
+GitHub Pages hosts a **static** build only: `?demo=1` enables a small in-browser
+adapter (`frontend/demo/demo-api.js`) backed by the Bandung fixture, so the map,
+search, reverse geocoding and `LOCATION_SELECTED` flow work without a server.
+The real FastAPI + PostgreSQL/PostGIS backend cannot run on Pages; deploy
+`backend/` separately and pass `?apiBase=https://your-api.example.id` (without
+`demo=1`) for full Indonesia coverage.
+
 ## Features
 
 - **Reverse geocoding** at province, regency, district and village level.
@@ -51,12 +64,15 @@ Detailed design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). API reference:
 backend/            FastAPI app, services, schemas, tests
 frontend/
   widget/           standalone Leaflet location picker (single HTML file)
+  demo/             static demo API adapter for GitHub Pages (?demo=1)
+  pages/            GitHub Pages landing page
   embed/            <peta-location-picker> Web Component
   react/            LocationPicker.tsx
   embed-example.html
 migrations/         001 schema, 002 indexes, 003 SQL functions
+scripts/            build_pages.py static-site builder
 etl/                admin/OSM importers, village linker, demo seed
-data/               bundled BPS CSV, JSON, GeoJSON and SQLite snapshot
+data/               local BPS/OSM extracts (not committed; see below)
 docs/               architecture, API, original dataset README
 docker-compose.yml  PostGIS + API (+ optional Photon profile)
 ```
@@ -143,7 +159,8 @@ make lint
 
 ### Administrative boundaries
 
-Source files are already in `data/`: 34 provinces, 514 cities, 7,228
+Place the BPS dataset under `data/` (the large extracts are not committed to
+Git): 34 provinces, 514 cities, 7,228
 districts and 83,320 villages, with GeoJSON for levels 1–3.
 
 ```bash
@@ -206,6 +223,17 @@ python3 -m http.server 8080
 Open <http://localhost:8080/frontend/embed-example.html>. It demonstrates the
 iframe, theme switching, imperative commands and the `LOCATION_SELECTED`
 payload.
+
+Build and preview the static GitHub Pages bundle locally:
+
+```bash
+python3 scripts/build_pages.py
+python3 -m http.server 8080 -d dist
+# open http://localhost:8080/
+```
+
+The Pages bundle adds `frontend/demo/demo-api.js` to the widget and is intended
+for UI demos; it does not replace the API.
 
 Minimal iframe:
 

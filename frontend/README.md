@@ -24,6 +24,11 @@ python3 -m http.server 8080
 API default `http://localhost:8000`. Jalankan backend dan database terlebih
 dahulu (lihat README utama), atau ubah nilai **API** di toolbar demo.
 
+Demo statis tanpa backend: buka
+<https://robprian.github.io/peta/> atau tambahkan `?demo=1` ke URL widget.
+Mode ini memakai fixture Bandung di `frontend/demo/demo-api.js`; data Indonesia
+penuh tetap memerlukan API FastAPI/PostGIS.
+
 ## 1. Embed langsung dengan iframe
 
 ```html
@@ -42,6 +47,7 @@ Responsif: di layar sempit panel detail otomatis menjadi bottom sheet.
 | Parameter | Default | Keterangan |
 | --- | --- | --- |
 | `apiBase` | same-origin / `http://localhost:8000` | Base URL API |
+| `demo` | `0` | `1` mengaktifkan adapter demo statis Bandung (tanpa API) |
 | `theme` | `light` / `dark` (prefers-color-scheme) | `light` atau `dark` |
 | `lat`, `lng` | — | Posisi pin awal |
 | `zoom` | `5` | Zoom awal |
