@@ -90,7 +90,7 @@
 
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
-    const raw = typeof input === 'string' ? input : input.url;
+    const raw = input instanceof URL ? input.href : typeof input === 'string' ? input : input.url;
     let url;
     try { url = new URL(raw, location.href); } catch (_) { return realFetch(input, init); }
     if (!url.pathname.includes('/api/v1/geo/')) return realFetch(input, init);
