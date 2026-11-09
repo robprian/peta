@@ -41,7 +41,11 @@ def main() -> None:
     )
     (OUT / "widget/location-picker.html").write_text(widget)
 
-    shutil.copytree(ROOT / "frontend/demo", OUT / "demo")
+    shutil.copytree(
+        ROOT / "frontend/demo",
+        OUT / "demo",
+        ignore=shutil.ignore_patterns("sources"),
+    )
     demo_json = (OUT / "demo/demo-data.json").read_text()
     (OUT / "demo/demo-data.js").write_text(
         "window.PETA_DEMO_DATA=" + demo_json.rstrip() + ";\n"
